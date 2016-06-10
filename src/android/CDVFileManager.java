@@ -7,6 +7,7 @@ import android.os.Environment;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.PermissionHelper;
+import org.apache.cordova.PluginResult;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -36,19 +37,28 @@ public class CDVFileManager extends CordovaPlugin {
     @Override
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
         if (action.equals(ACTION_HAS_PERMISSION)) {
-            hasPermisssion(callbackContext);
+            this.hasPermisssion(callbackContext);
             return true;
         } else if (action.equals(ACTION_REQUEST_PERMISSION)) {
-            requestPermission(callbackContext);
+            this.requestPermission(callbackContext);
             return true;
         } else if (action.equals(ACTION_GET_DIRECTORY_LISTING)) {
-            String path;
+            String tempPath;
             try {
-                path = args.getString(0);
+                tempPath = args.getString(0);
             } catch (JSONException exp) {
-                path = null;
+                tempPath = null;
             }
-            getDirectoryListing(path, callbackContext);
+            final String path = tempPath;
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    try {
+                        getDirectoryListing(path, callbackContext);
+                    } catch (JSONException exp) {
+                        exp.printStackTrace();
+                    }
+                }
+            });
             return true;
         }
         return false;
@@ -68,16 +78,13 @@ public class CDVFileManager extends CordovaPlugin {
     }
 
     public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
-        CallbackContext callbackContext = PendingRequests.remove(ACTION_REQUEST_PERMISSION);
-        if (callbackContext != null) {
-            for (int r : grantResults) {
-                if (r == PackageManager.PERMISSION_DENIED) {
-                    callbackContext.error(getErrorObject(ERROR_PERMISSION_DENIED, "Permission denied."));
-                    return;
-                }
+        for (int r : grantResults) {
+            if (r == PackageManager.PERMISSION_DENIED) {
+                PendingRequests.fireCallback(ACTION_REQUEST_PERMISSION, new PluginResult(PluginResult.Status.ERROR, getErrorObject(ERROR_PERMISSION_DENIED, "Permission denied.")), true);
+                return;
             }
-            callbackContext.success(getSuccessObject());
         }
+        PendingRequests.fireCallback(ACTION_REQUEST_PERMISSION, new PluginResult(PluginResult.Status.OK, getSuccessObject()), true);
     }
 
     private void getDirectoryListing(String path, CallbackContext callbackContext) throws JSONException {
