@@ -14,6 +14,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.util.Arrays;
 import java.util.Comparator;
 
@@ -43,17 +44,12 @@ public class CDVFileManager extends CordovaPlugin {
             this.requestPermission(callbackContext);
             return true;
         } else if (action.equals(ACTION_GET_DIRECTORY_LISTING)) {
-            String tempPath;
-            try {
-                tempPath = args.getString(0);
-            } catch (JSONException exp) {
-                tempPath = null;
-            }
-            final String path = tempPath;
+            final String path = args.getString(0);
+            final String filter = args.getString(1);
             cordova.getThreadPool().execute(new Runnable() {
                 public void run() {
                     try {
-                        getDirectoryListing(path, callbackContext);
+                        getDirectoryListing(path, filter, callbackContext);
                     } catch (JSONException exp) {
                         exp.printStackTrace();
                     }
@@ -87,13 +83,13 @@ public class CDVFileManager extends CordovaPlugin {
         PendingRequests.fireCallback(ACTION_REQUEST_PERMISSION, new PluginResult(PluginResult.Status.OK, getSuccessObject()), true);
     }
 
-    private void getDirectoryListing(String path, CallbackContext callbackContext) throws JSONException {
+    private void getDirectoryListing(String path, final String filter, CallbackContext callbackContext) throws JSONException {
 
         JSONObject objResult = getSuccessObject();
         JSONArray arrFiles = new JSONArray();
         JSONObject objData = null;
 
-        if (path != null) {
+        if (path != "null") {
             /**
              * list on given path
              */
@@ -106,7 +102,18 @@ public class CDVFileManager extends CordovaPlugin {
 
             objData = parseFile(baseFile);
 
-            File[] files = baseFile.listFiles();
+            File[] files;
+            if (filter != "null") {
+                files = baseFile.listFiles(new FileFilter() {
+                    @Override
+                    public boolean accept(File file) {
+                        return file.getAbsolutePath().matches(filter);
+                    }
+                });
+            } else {
+                files = baseFile.listFiles();
+            }
+
             if (files != null) {
 
                 Arrays.sort(files, new Comparator<File>() {

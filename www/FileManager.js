@@ -13,8 +13,8 @@ var exec = require('cordova/exec'),
             exec(success, error, 'FileManager', 'requestPermission', []);
         },
 
-        getDirectoryListing: function (success, error, path) {
-            exec(success, error, 'FileManager', 'getDirectoryListing', path && [path] || []);
+        getDirectoryListing: function (success, error, path, filter) {
+            exec(success, error, 'FileManager', 'getDirectoryListing', [path, filter]);
         }
     };
 
