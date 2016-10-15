@@ -27,7 +27,7 @@ FileManager.requestPermission(function () {
 - __getDirectoryListing__: Get list of directories and files at given path.
 
 ```js
-FileManager.requestPermission(function (result) {
+FileManager.getDirectoryListing(function (result) {
   // success
 }, function (error) {
   // failed to retrieve list
